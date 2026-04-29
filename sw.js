@@ -1,6 +1,6 @@
 const CACHE_NAME = 'turntable-v1';
 const ASSETS = [
-  'turntable.html',
+  'index.html',
   'manifest.json',
   'icon.png'
 ];
