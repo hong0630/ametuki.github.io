@@ -2,63 +2,189 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>專業轉盤抽獎系統 - 視覺優化版</title>
-    <style>
-        :root { --primary: #6366f1; --bg: #f8fafc; }
-        body { font-family: system-ui, sans-serif; background: var(--bg); display: flex; justify-content: center; padding: 40px; margin: 0; }
-        .container { display: flex; gap: 30px; background: white; padding: 20px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); max-width: 1000px; width: 100%; }
-        
-        .wheel-section { flex: 1; display: flex; flex-direction: column; align-items: center; position: relative; }
-        canvas { border-radius: 50%; border: 8px solid #334155; }
-        .pointer { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 15px solid transparent; border-right: 15px solid transparent; border-top: 30px solid #ef4444; z-index: 10; }
-
-        .control-section { width: 320px; display: flex; flex-direction: column; gap: 15px; }
-        .input-group { display: flex; gap: 5px; }
-        input, button { padding: 10px; border: 1px solid #ddd; border-radius: 6px; }
-        button { cursor: pointer; background: var(--primary); color: white; border: none; font-weight: bold; transition: 0.3s; }
-        button:hover { opacity: 0.9; transform: translateY(-1px); }
-        button:disabled { background: #cbd5e1; cursor: not-allowed; }
-
-        .list-container { border: 1px solid #eee; border-radius: 8px; height: 120px; overflow-y: auto; padding: 10px; font-size: 14px; background: #fff; }
-        .item { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; background: #f1f5f9; padding: 5px 8px; border-radius: 4px; }
-        .del-btn { color: #ef4444; border: none; background: none; font-size: 16px; }
-
-        .winners-box { border-top: 2px dashed #eee; padding-top: 15px; }
-        .winner-item { color: #059669; font-weight: bold; margin-bottom: 5px; padding: 4px; border-left: 3px solid #059669; padding-left: 10px; background: #ecfdf5; border-radius: 4px; }
-        
-        #statusText { margin-top: 15px; font-size: 1.2rem; font-weight: bold; color: #1e293b; }
-    </style>
+    <title>專業轉盤抽獎系統</title>
     <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="轉盤抽獎">
     <link rel="apple-touch-icon" href="icon.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    
+    <style>
+        :root { --primary: #6366f1; --bg: #f8fafc; }
+        
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        body { 
+            font-family: system-ui, -apple-system, sans-serif; 
+            background: var(--bg); 
+            margin: 0; 
+            display: flex; 
+            justify-content: center; 
+            min-height: 100vh;
+        }
+
+        /* 主容器 RWD：預設橫向，手機縱向 */
+        .container { 
+            display: flex; 
+            flex-direction: row; 
+            gap: 20px; 
+            background: white; 
+            padding: 20px; 
+            width: 100%;
+            max-width: 1000px;
+            margin: auto;
+        }
+
+        /* 轉盤區：在手機上優先顯示 */
+        .wheel-section { 
+            flex: 1.2; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            position: relative;
+            min-width: 0; /* 防止 Canvas 撐破容器 */
+        }
+
+        /* 轉盤自適應：寬度設為 90vw (最大 450px) */
+        #canvasContainer {
+            position: relative;
+            width: 90vw;
+            max-width: 450px;
+            aspect-ratio: 1 / 1;
+        }
+
+        canvas { 
+            width: 100% !important; 
+            height: auto !important; 
+            border-radius: 50%; 
+            border: 6px solid #334155; 
+        }
+
+        .pointer { 
+            position: absolute; 
+            top: -5px; 
+            left: 50%; 
+            transform: translateX(-50%); 
+            width: 0; 
+            height: 0; 
+            border-left: 12px solid transparent; 
+            border-right: 12px solid transparent; 
+            border-top: 25px solid #ef4444; 
+            z-index: 10; 
+        }
+
+        /* 控制面板 RWD */
+        .control-section { 
+            flex: 0.8; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 15px; 
+            min-width: 300px;
+        }
+
+        h3, h4 { margin: 10px 0 5px; }
+
+        .input-group { display: flex; gap: 8px; align-items: center; }
+        input, button { 
+            padding: 12px; 
+            border: 1px solid #e2e8f0; 
+            border-radius: 10px; 
+            font-size: 16px; /* iOS 防止自動放大 input */
+        }
+        
+        input[type="text"] { flex: 1; }
+        
+        button { 
+            cursor: pointer; 
+            background: var(--primary); 
+            color: white; 
+            border: none; 
+            font-weight: 600; 
+            transition: active 0.1s; 
+        }
+        button:active { opacity: 0.8; transform: scale(0.98); }
+        button:disabled { background: #cbd5e1; cursor: not-allowed; }
+
+        .list-container { 
+            border: 1px solid #f1f5f9; 
+            border-radius: 12px; 
+            height: 150px; 
+            overflow-y: auto; 
+            padding: 8px; 
+            background: #f8fafc; 
+        }
+        
+        .item { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 6px; 
+            background: white; 
+            padding: 8px 12px; 
+            border-radius: 8px; 
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+
+        .del-btn { color: #ef4444; background: none; padding: 4px 8px; }
+
+        .winners-box { 
+            border-top: 2px solid #f1f5f9; 
+            margin-top: 10px; 
+            padding-top: 10px; 
+        }
+        
+        .winner-item { 
+            color: #059669; 
+            font-weight: bold; 
+            margin-bottom: 6px; 
+            padding: 10px; 
+            background: #ecfdf5; 
+            border-radius: 8px; 
+        }
+
+        #statusText { margin: 15px 0; font-size: 1.1rem; font-weight: bold; text-align: center; }
+
+        /* 手機版樣式調整 (Media Query) */
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            .container { 
+                flex-direction: column; 
+                padding: 15px; 
+                border-radius: 0;
+                box-shadow: none;
+                background: var(--bg);
+            }
+            .wheel-section { margin-bottom: 20px; }
+            .control-section { width: 100%; min-width: unset; background: white; padding: 20px; border-radius: 20px; }
+        }
+    </style>
 </head>
 <body>
 
 <div class="container">
     <div class="wheel-section">
-        <div class="pointer"></div>
-        <canvas id="wheelCanvas" width="450" height="450"></canvas>
+        <div id="canvasContainer">
+            <div class="pointer"></div>
+            <canvas id="wheelCanvas" width="900" height="900"></canvas> 
+            </div>
         <div id="statusText">準備就緒</div>
     </div>
 
     <div class="control-section">
         <h3>選項管理</h3>
         <div class="input-group">
-            <input type="text" id="optionInput" placeholder="輸入選項...">
+            <input type="text" id="optionInput" placeholder="輸入選項名稱...">
             <button onclick="addOption()">新增</button>
         </div>
         <div class="list-container" id="optionList"></div>
 
         <div class="input-group">
-            <label style="line-height: 40px;">抽出人數：</label>
-            <input type="number" id="drawCount" value="1" min="1" style="width: 60px;">
+            <label>抽出人數：</label>
+            <input type="number" id="drawCount" value="1" min="1" style="width: 70px;">
         </div>
         
-        <button id="spinBtn" onclick="handleButtonClick()" style="padding: 15px; font-size: 1.1em;">開始抽獎</button>
+        <button id="spinBtn" onclick="handleButtonClick()" style="width: 100%; padding: 16px; font-size: 1.2em; border-radius: 12px;">開始抽獎</button>
 
         <div class="winners-box">
             <h4>中獎名單</h4>
@@ -280,6 +406,5 @@
 
     init();
 </script>
-
 </body>
 </html>
